@@ -25,17 +25,43 @@ export default class AuthUserService<TEntity extends AuthUser = AuthUser> {
 
   @InjectManager("authUserRepository_")
   async retrieve(
-    provider: string,
+    id: string,
     config: FindConfig<ServiceTypes.AuthUserDTO> = {},
     @MedusaContext() sharedContext: Context = {}
   ): Promise<TEntity> {
     return (await retrieveEntity<AuthUser, ServiceTypes.AuthUserDTO>({
-      id: provider,
+      id,
       entityName: AuthUser.name,
       repository: this.authUserRepository_,
       config,
       sharedContext,
     })) as TEntity
+  }
+
+  @InjectManager("authUserRepository_")
+  async retrieveByProviderAndEntityId(
+    entityId: string,
+    provider: string,
+    config: FindConfig<ServiceTypes.AuthUserDTO> = {},
+    @MedusaContext() sharedContext: Context = {}
+  ): Promise<TEntity> {
+    const queryConfig = ModulesSdkUtils.buildQuery<AuthUser>(
+      { entity_id: entityId, provider },
+      { ...config, take: 1 }
+    )
+    const [result] = await this.authUserRepository_.find(
+      queryConfig,
+      sharedContext
+    )
+
+    if (!result) {
+      throw new MedusaError(
+        MedusaError.Types.NOT_FOUND,
+        `AuthUser with entity_id: "${entityId}" and provider: "${provider}" not found`
+      )
+    }
+
+    return result
   }
 
   @InjectManager("authUserRepository_")
